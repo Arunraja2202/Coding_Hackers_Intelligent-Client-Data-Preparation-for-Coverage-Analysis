@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block page_title %}Client templates{% endblock %}
+{% block page_sub %}Reusable output columns and rules metadata — no sample client data is stored here{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card app-card"><div class="card-body">
+      <div class="section-title">Create / update template</div>
+      <form id="templateForm">
+        <label class="form-label mt-3 small fw-semibold">Name</label><input id="tName" class="form-control" required>
+        <label class="form-label mt-3 small fw-semibold">Description</label><input id="tDesc" class="form-control">
+        <label class="form-label mt-3 small fw-semibold">Output columns</label><input id="tCols" class="form-control" value="Country,Region,Channel,City/State,Category,Brand,SKU,Fact">
+        <label class="form-label mt-3 small fw-semibold">Rules JSON</label><textarea id="tRules" class="form-control" rows="5">{"period":"keep_as_columns","traceability":true}</textarea>
+        <button class="btn btn-primary mt-3 w-100">Save template</button>
+      </form>
+      <div id="tMsg" class="mt-3"></div>
+    </div></div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card app-card"><div class="card-body">
+      <div class="section-title">Available templates</div>
+      <div id="templateList" class="mt-3"></div>
+    </div></div>
+  </div>
+</div>
+{% endblock %}{% block scripts %}
+<script>
+async function loadT(){let r=await fetch('/api/templates');let d=await r.json();document.getElementById('templateList').innerHTML=d.map(t=>`<div class="border rounded-3 p-3 mb-2"><b>${t.name}</b><div class="small text-secondary">${t.description||''}</div></div>`).join('')||'<div class="text-secondary">No templates yet.</div>'}
+document.getElementById('templateForm').addEventListener('submit',async e=>{
+  e.preventDefault();let fd=new FormData();fd.append('name',tName.value);fd.append('description',tDesc.value);
+  fd.append('columns',JSON.stringify(tCols.value.split(',').map(x=>x.trim()).filter(Boolean)));fd.append('rules',tRules.value);
+  let r=await fetch('/api/templates',{method:'POST',body:fd});
+  document.getElementById('tMsg').innerHTML=r.ok?'<div class="alert alert-success">Template saved.</div>':'<div class="alert alert-danger">Unable to save template.</div>';
+  loadT();
+});
+loadT();
+</script>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block page_title %}Job history{% endblock %}
+{% block page_sub %}Persisted SQLite history, status, engine, quality issues and artifacts{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-end mb-3"><a class="btn btn-primary" href="/upload">New job</a></div>
+<div class="card app-card">
+  <div class="card-body">
+    <div class="table-responsive"><table class="table align-middle"><thead><tr><th>ID</th><th>File</th><th>Engine</th><th>Status</th><th>Input</th><th>Output</th><th>Issues</th><th>Actions</th></tr></thead><tbody id="jobsBody"></tbody></table></div>
+  </div>
+</div>
+{% endblock %}{% block scripts %}<script src="/static/js/app.js"></script>{% endblock %}

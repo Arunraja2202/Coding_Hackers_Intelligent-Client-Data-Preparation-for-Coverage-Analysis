@@ -1,0 +1,15 @@
+﻿Metric,Value
+job_id,1
+source_file,example_1_easy.xlsx
+input_rows,19
+output_rows,19
+rows_removed_null,0
+rows_removed_duplicate,0
+rows_removed_aggregate,0
+rows_flagged_invalid_period,0
+total_rows_removed_or_flagged,0
+net_reconciliation_pct,100.0
+null_cells_in_source,260
+total_issues_logged,0
+
+Issue type,Count

@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block page_title %}Analytics & Power BI{% endblock %}
+{% block page_sub %}Portfolio view across every job, plus a Power BI-ready package for any completed run{% endblock %}
+{% block content %}
+<div class="kpi-grid" id="kpiRow"></div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6"><div class="card app-card h-100"><div class="card-body"><div class="section-title">Jobs by status</div><canvas id="statusChart" height="220"></canvas></div></div></div>
+  <div class="col-lg-6"><div class="card app-card h-100"><div class="card-body"><div class="section-title">Engine usage (Polars vs PySpark)</div><canvas id="engineChart" height="220"></canvas></div></div></div>
+</div>
+
+<div class="report-panel mb-4">
+  <h5>📊 Power BI package</h5>
+  <div class="desc">Every completed job below ships a load-ready workbook (Cleaned_Data / Issue_Log / Reconciliation_Summary / Run_Info) — open it in Power BI Desktop via <b>Get Data → Excel workbook</b>, or open the live HTML dashboard instantly with no install.</div>
+  <div id="pbiLinks" class="report-grid"></div>
+</div>
+
+<div class="card app-card"><div class="card-body">
+  <div class="section-title mb-3">Recent jobs</div>
+  <div class="table-responsive"><table class="table align-middle"><thead><tr><th>ID</th><th>File</th><th>Engine</th><th>Status</th><th>Confidence</th><th>Issues</th><th>Artifacts</th></tr></thead><tbody id="recentBody"></tbody></table></div>
+</div></div>
+{% endblock %}{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+let statusChart, engineChart;
+function kpi(label, value, sub, accent){return `<div class="kpi ${accent?'accent':''}"><div class="label">${label}</div><div class="value">${value}</div><div class="sub">${sub||''}</div></div>`}
+async function loadSummary(){
+  let r = await fetch('/api/dashboard/summary'); let d = await r.json();
+  document.getElementById('kpiRow').innerHTML =
+      kpi('Total jobs', d.total_jobs, '', true) +
+      kpi('Completed', d.completed_jobs) +
+      kpi('Output rows', (d.total_output_rows||0).toLocaleString()) +
+      kpi('Avg confidence', Math.round((d.avg_confidence||0)*100)+'%');
+  const sCtx = document.getElementById('statusChart');
+  const eCtx = document.getElementById('engineChart');
+  if(statusChart) statusChart.destroy(); if(engineChart) engineChart.destroy();
+  statusChart = new Chart(sCtx, {type:'doughnut', data:{labels:Object.keys(d.status_counts), datasets:[{data:Object.values(d.status_counts), backgroundColor:['#5b6cff','#17b978','#ef476f','#f5a524','#8b5cf6']}]}, options:{plugins:{legend:{position:'bottom'}}}});
+  engineChart = new Chart(eCtx, {type:'bar', data:{labels:Object.keys(d.engine_counts), datasets:[{label:'Jobs', data:Object.values(d.engine_counts), backgroundColor:'#5b6cff', borderRadius:6}]}, options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}});
+
+  const completed = d.recent.filter(j=>j.status==='COMPLETED');
+  document.getElementById('pbiLinks').innerHTML = completed.length ? completed.map(j=>`
+    <a class="pbi" href="/api/jobs/${j.id}/download/powerbi"><span class="t">📊 Job #${j.id} Power BI</span><span class="d">${escapeHtml(j.filename)}</span></a>
+  `).join('') : '<div style="color:rgba(255,255,255,.7);font-size:13px">No completed jobs yet — run a transformation to generate a Power BI package.</div>';
+
+  document.getElementById('recentBody').innerHTML = d.recent.map(j=>`<tr>
+    <td>#${j.id}</td><td>${escapeHtml(j.filename)}</td>
+    <td><span class="small-pill">${j.engine||'—'}</span></td>
+    <td><span class="small-pill status-${j.status}">${j.status}</span></td>
+    <td>${j.confidence!=null?Math.round(j.confidence*100)+'%':'—'}</td>
+    <td>${j.issue_count??'—'}</td>
+    <td>${j.status==='COMPLETED'?`
+        <a class="btn btn-sm btn-outline-primary" href="/api/jobs/${j.id}/dashboard" target="_blank">Dashboard</a>
+        <a class="btn btn-sm btn-powerbi" href="/api/jobs/${j.id}/download/powerbi">Power BI</a>
+        <a class="btn btn-sm btn-outline-secondary" href="/api/jobs/${j.id}/download/reconciliation">Reconciliation</a>
+        <a class="btn btn-sm btn-outline-secondary" href="/api/jobs/${j.id}/download/method_note">Method note</a>`:''}</td>
+  </tr>`).join('') || '<tr><td colspan="7" class="text-secondary">No jobs yet.</td></tr>';
+}
+function escapeHtml(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+loadSummary();
+</script>
+{% endblock %}

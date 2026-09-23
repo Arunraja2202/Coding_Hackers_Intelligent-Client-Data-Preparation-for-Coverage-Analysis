@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}Upload, transform and download in one place{% endblock %}
+{% block content %}
+
+<div class="kpi-grid" id="kpiRow">
+  <div class="kpi accent"><div class="label">Total jobs</div><div class="value" id="kpiTotal">—</div><div class="sub">All time</div></div>
+  <div class="kpi"><div class="label">Completed</div><div class="value" id="kpiCompleted">—</div><div class="sub" id="kpiCompletedSub">&nbsp;</div></div>
+  <div class="kpi"><div class="label">Output rows produced</div><div class="value" id="kpiRows">—</div><div class="sub">Across all jobs</div></div>
+  <div class="kpi"><div class="label">Avg. AI confidence</div><div class="value" id="kpiConf">—</div><div class="sub">CSI LLM + Smart Analyzer</div></div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-7">
+    <div class="card app-card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div><div class="section-title">New transformation job</div><div class="section-sub">CSV, XLSX, XLS, TXT, TSV, JSON, XML, PARQUET</div></div>
+          <span class="badge text-bg-light border">≤ 1 GiB: Polars &middot; &gt; 1 GiB: PySpark</span>
+        </div>
+        <form id="uploadForm">
+          <div id="dropzone" class="dropzone mb-3">
+            <input id="file" name="file" type="file" class="d-none" accept=".csv,.xlsx,.xls,.txt,.tsv,.json,.xml,.parquet">
+            <div class="upload-icon mb-2">⇧</div>
+            <h6 class="fw-bold mb-1">Drop a file here, or click to browse</h6>
+            <p class="text-secondary small mb-2">AI reads headers, detects layout, proposes a mapping — you always see it before it's final.</p>
+            <div id="fileName" class="fw-semibold small"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Output columns</label>
+            <input id="requiredColumns" class="form-control" value="Country,Region,Channel,City/State,Category,Brand,SKU,Fact">
+            <div class="form-text">Comma-separated. Time periods stay as columns.</div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold small">Template</label>
+            <select id="template" class="form-select"><option value="">Auto-detect</option></select>
+          </div>
+          <button id="startBtn" class="btn btn-primary btn-lg w-100" disabled>Upload &amp; Transform</button>
+        </form>
+        <div id="progressBox" class="mt-4 d-none">
+          <div class="d-flex justify-content-between mb-2"><span id="stage" class="small fw-semibold">Starting…</span><strong id="progress">0%</strong></div>
+          <div class="progress" style="height:10px"><div id="bar" class="progress-bar" style="width:0%"></div></div>
+          <div id="result" class="mt-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-5">
+    <div class="card app-card mb-4">
+      <div class="card-body">
+        <div class="section-title">How it works</div>
+        <div class="pipeline-steps mt-2">
+          <div class="step"><b>01</b><div class="txt"><strong>Profile the file</strong><span>Size check routes to Polars (≤1 GiB) or PySpark (&gt;1 GiB); headers &amp; layout are sampled.</span></div></div>
+          <div class="step"><b>02</b><div class="txt"><strong>AI analysis</strong><span>CSI LLM (or the local Smart Analyzer if it's unreachable) reads headers/samples and proposes a mapping + confidence.</span></div></div>
+          <div class="step"><b>03</b><div class="txt"><strong>Deterministic cleaning</strong><span>Trim, de-duplicate, normalize dates/numbers, drop blank/subtotal rows — every action logged.</span></div></div>
+          <div class="step"><b>04</b><div class="txt"><strong>Validate &amp; reconcile</strong><span>Row counts are reconciled; low-confidence mappings are flagged, never guessed silently.</span></div></div>
+          <div class="step"><b>05</b><div class="txt"><strong>Deliver</strong><span>Cleaned dataset, issue log, reconciliation, method note, Power BI workbook &amp; live dashboard.</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card app-card">
+      <div class="card-body">
+        <div class="section-title">Target structure</div>
+        <div class="target-tags mt-2">{% for c in ['Country','Region','Channel','City/State','Category','Brand','SKU','Fact'] %}<span>{{c}}</span>{% endfor %}</div>
+        <p class="small text-secondary mt-3 mb-0">Time periods always remain columns. No source value is invented — low-confidence mappings stay reviewable and reversible.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card app-card mt-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div><div class="section-title">Recent jobs</div><div class="section-sub">Download the cleaned file, issue log, reconciliation, method note, or the Power BI package for any completed job</div></div>
+      <button class="btn btn-sm btn-outline-secondary" onclick="loadJobs();loadKpis()">Refresh</button>
+    </div>
+    <div class="table-responsive"><table class="table align-middle"><thead><tr><th>ID</th><th>File</th><th>Engine</th><th>Status</th><th>Input</th><th>Output</th><th>Issues</th><th>Actions</th></tr></thead><tbody id="jobsBody"></tbody></table></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/app.js"></script>
+<script>
+async function loadKpis(){
+  try{
+    let r = await fetch('/api/dashboard/summary'); let d = await r.json();
+    document.getElementById('kpiTotal').textContent = d.total_jobs;
+    document.getElementById('kpiCompleted').textContent = d.completed_jobs;
+    document.getElementById('kpiCompletedSub').textContent = (d.total_jobs? Math.round(d.completed_jobs/d.total_jobs*100):0) + '% success rate';
+    document.getElementById('kpiRows').textContent = (d.total_output_rows||0).toLocaleString();
+    document.getElementById('kpiConf').textContent = Math.round((d.avg_confidence||0)*100) + '%';
+  }catch(e){}
+}
+loadKpis();
+</script>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block page_title %}Transform{% endblock %}
+{% block page_sub %}Upload one source file — AI proposes the mapping, deterministic rules apply it{% endblock %}
+{% block content %}
+<div class="card app-card">
+  <div class="card-body p-4 p-lg-5">
+    <form id="uploadForm">
+      <div id="dropzone" class="dropzone mb-4">
+        <input id="file" name="file" type="file" class="d-none" accept=".csv,.xlsx,.xls,.txt,.tsv,.json,.xml,.parquet">
+        <div class="upload-icon mb-2">⇧</div>
+        <h5 class="fw-bold">Drop your source file</h5>
+        <p class="text-secondary">CSV · XLSX · XLS · TXT · TSV · JSON · XML · PARQUET</p>
+        <div id="fileName" class="fw-semibold"></div>
+      </div>
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <label class="form-label fw-semibold small">Required output columns</label>
+          <input id="requiredColumns" class="form-control" value="Country,Region,Channel,City/State,Category,Brand,SKU,Fact">
+          <div class="form-text">Time periods remain columns.</div>
+        </div>
+        <div class="col-lg-4">
+          <label class="form-label fw-semibold small">Client template</label>
+          <select id="template" class="form-select"><option value="">Auto-detect</option></select>
+        </div>
+      </div>
+      <button id="startBtn" class="btn btn-primary btn-lg mt-4" disabled>Upload &amp; Transform</button>
+    </form>
+    <div id="progressBox" class="mt-4 d-none">
+      <div class="d-flex justify-content-between mb-2"><span id="stage" class="small fw-semibold">Starting…</span><strong id="progress">0%</strong></div>
+      <div class="progress" style="height:10px"><div id="bar" class="progress-bar" style="width:0%"></div></div>
+      <div id="result" class="mt-3"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}{% block scripts %}<script src="/static/js/app.js"></script>{% endblock %}
